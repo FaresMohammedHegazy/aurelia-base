@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "phone_number": "555-0502",
+    "message": "Major water leak from the ceiling, bed is soaked."
+  },
+  {
+    "id": "2",
+    "phone_number": "555-0210",
+    "message": "Air conditioning is blowing hot air."
+  },
+  {
+    "id": "3",
+    "phone_number": "555-0405",
+    "message": "The electronic door lock is completely unresponsive."
+  },
+  {
+    "id": "4",
+    "phone_number": "555-0112",
+    "message": "Guest is complaining about a strange smell, but no visible hazards."
+  }
+]
