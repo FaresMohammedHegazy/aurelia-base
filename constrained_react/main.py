@@ -15,7 +15,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 INPUT_FILE = os.path.join(BASE_DIR, "shared_inputs.json")
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL_NAME = "openai/gpt-oss-120b"
+MODEL_NAME = "llama-3.3-70b-versatile"
 
 # ----------------------------------------------------------------------
 # THE TWO CONSTRAINTS THAT MAKE THIS AGENT "CONSTRAINED"

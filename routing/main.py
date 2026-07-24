@@ -34,7 +34,7 @@ def classify_issue_with_llm(issue_text):
                 {"role": "system", "content": "You are a precise classification router."},
                 {"role": "user", "content": prompt}
             ],
-            model="openai/gpt-oss-120b",
+            model="llama-3.3-70b-versatile",
             temperature=0.0
         )
         return response.choices[0].message.content.strip()
