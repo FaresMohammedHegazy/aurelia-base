@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from groq import Groq
 from pydantic import ValidationError
 from tenacity import retry, stop_after_attempt, retry_if_exception_type
-
+import time
 from schema import AgentStep, ALLOWED_TOOLS
 from tools import TOOL_FUNCTIONS
 
@@ -52,7 +52,7 @@ class StepValidationError(Exception):
 
 
 @retry(stop=stop_after_attempt(3), retry=retry_if_exception_type(StepValidationError))
-def get_valid_step(messages: list) -> tuple[AgentStep, list]:
+def get_valid_step(messages: list) -> tuple[AgentStep, list, int]:
     """
     Calls the model and validates its response against AgentStep.
     On failure, appends a corrective message and raises so tenacity retries
@@ -64,6 +64,7 @@ def get_valid_step(messages: list) -> tuple[AgentStep, list]:
         model=MODEL_NAME,
         temperature=0.0,
     )
+    tokens_used = response.usage.total_tokens if response.usage else 0
     raw = response.choices[0].message.content.strip()
 
     try:
@@ -78,7 +79,7 @@ def get_valid_step(messages: list) -> tuple[AgentStep, list]:
         })
         raise StepValidationError(str(e))
 
-    return step, messages
+    return step, messages, tokens_used
 
 
 def run_agent(guest_data: dict) -> dict:
@@ -91,27 +92,42 @@ def run_agent(guest_data: dict) -> dict:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Guest phone: {phone}\nGuest message: {message}"},
     ]
-
+    start_time = time.time()
+    total_tokens = 0
     for step_num in range(1, MAX_STEPS + 1):
         try:
-            step, messages = get_valid_step(messages)
+            step, messages, tokens_used = get_valid_step(messages)
+            total_tokens += tokens_used
         except StepValidationError:
+            elapsed = time.time() - start_time
             print(f"  -> Step {step_num}: model failed to produce a valid step after 3 retries.")
             print("  -> FORCED EXIT: escalate_to_manager (validation budget exhausted).")
+            print(f"  📊 METRICS | Steps Taken: {step_num} | Total Tokens: {total_tokens} | Time: {elapsed:.2f}s"
+            )
             return {"status": "escalated", "reason": "schema_validation_failed"}
 
         print(f"  -> Step {step_num} | thought: {step.thought}")
         print(f"     tool: {step.tool} | input: {step.tool_input}")
 
         if step.tool == "final_answer":
-            print(f"  -> FINAL ANSWER: {step.tool_input}")
+            elapsed = time.time() - start_time
+            print(
+                f"  -> FINAL ANSWER: {step.tool_input}"
+            )  
+            print(
+                f"  📊 METRICS | Steps Taken: {step_num} | Total Tokens: {total_tokens} | Time: {elapsed:.2f}s"
+            ) 
             return {"status": "final_answer", **step.tool_input}
 
         if step.tool == "escalate_to_manager":
-            print(f"  -> ESCALATED: {step.tool_input}")
+            elapsed = time.time() - start_time  
+            print(
+                f"  -> ESCALATED: {step.tool_input}"
+            )  
+            print(
+                f"  📊 METRICS | Steps Taken: {step_num} | Total Tokens: {total_tokens} | Time: {elapsed:.2f}s"
+            )  
             return {"status": "escalated", **step.tool_input}
-
-        # Execute the allow-listed tool and feed the observation back in.
         tool_fn = TOOL_FUNCTIONS[step.tool]
         observation = tool_fn(**step.tool_input)
         print(f"     observation: {observation}")
@@ -121,8 +137,11 @@ def run_agent(guest_data: dict) -> dict:
 
     # MAX_STEPS budget exhausted without a final_answer/escalate -- never
     # let the loop just silently stop, force a safe exit.
+    elapsed = time.time() - start_time
     print(f"  -> MAX_STEPS ({MAX_STEPS}) reached without a final answer.")
     print("  -> FORCED EXIT: escalate_to_manager (step budget exhausted).")
+    print(
+        f"  📊 METRICS | Steps Taken: {MAX_STEPS} | Total Tokens: {total_tokens} | Time: {elapsed:.2f}s")
     return {"status": "escalated", "reason": "max_steps_exhausted"}
 
 
