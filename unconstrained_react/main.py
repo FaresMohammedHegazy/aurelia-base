@@ -54,13 +54,14 @@ def run_unconstrained_react(user_issue: str):
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=messages,
-            temperature=0.1
+            temperature=0.1,
+            stop=["Observation:"]
         )
         
         if response.usage:
             total_tokens += response.usage.total_tokens
             
-        ai_response = response.choices[0].message.content
+        ai_response = response.choices[0].message.content.strip()
         print(f"\n--- [Step {step_count}] AI Output ---")
         print(ai_response)
         
@@ -77,11 +78,15 @@ def run_unconstrained_react(user_issue: str):
             
         if "Action:" in ai_response and "Action Input:" in ai_response:
             try:
-                action_line = [line for line in ai_response.split("\n") if line.startswith("Action:")][0]
-                input_line = [line for line in ai_response.split("\n") if line.startswith("Action Input:")][0]
+                lines = ai_response.split("\n")
+                tool_name = ""
+                tool_input = ""
                 
-                tool_name = action_line.replace("Action:", "").strip()
-                tool_input = input_line.replace("Action Input:", "").strip()
+                for line in lines:
+                    if line.startswith("Action:"):
+                        tool_name = line.replace("Action:", "").strip()
+                    elif line.startswith("Action Input:"):
+                        tool_input = line.replace("Action Input:", "").strip()
                 
                 if tool_name in AVAILABLE_TOOLS:
                     observation = AVAILABLE_TOOLS[tool_name](tool_input)
@@ -95,7 +100,6 @@ def run_unconstrained_react(user_issue: str):
             messages.append({"role": "user", "content": f"Observation: {observation}"})
         else:
             messages.append({"role": "user", "content": "Please continue using Thought/Action/Observation or provide Final Answer."})
-
 def main():
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     json_path = os.path.join(BASE_DIR, "shared_inputs.json")
