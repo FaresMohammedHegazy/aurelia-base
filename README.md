@@ -41,7 +41,7 @@ Each folder is runnable on its own and has its own README with exact setup
 steps. All four read the same `shared_inputs.json` at the repo root, so
 results are apples-to-apples.
 
-**Model/provider:** Groq (`openai/gpt-oss-120b`) for every agent that makes
+**Model/provider:** Groq (`llama-3.3-70b-versatile' ) for every agent that makes
 a model call, to keep the model itself constant across architectures — the
 only thing that should vary between folders is the architecture.
 
